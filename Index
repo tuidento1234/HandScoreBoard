@@ -458,12 +458,12 @@
  *************************************************/
 
 
-const API_URL =
-  'ใส่_URL_WEB_APP_ของ_APPS_SCRIPT';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwk2Ugy_GzyyMp_DqNFDgZIQ0s7diP8xBtepQCmJtEuzdFxaTqfad0AYKgOKHQwEjeABw/exec';
+  /*'ใส่_URL_WEB_APP_ของ_APPS_SCRIPT';*/
 
 
 const ACCESS_KEY =
-  'MYGAME2026';
+  'Dentistry';
 
 
 /*************************************************
