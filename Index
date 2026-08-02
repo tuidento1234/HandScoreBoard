@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+
+<html lang="th">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    ระบบตรวจจับมือและลงคะแนน
+  </title>
+
+
+  <!-- MediaPipe -->
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"
+    crossorigin="anonymous">
+  </script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+    crossorigin="anonymous">
+  </script>
+
+  <script
+    src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"
+    crossorigin="anonymous">
+  </script>
+
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+
+    body {
+
+      margin: 0;
+
+      padding: 20px;
+
+      background:
+        linear-gradient(
+          135deg,
+          #eef2ff,
+          #f8fafc
+        );
+
+      font-family:
+        Arial,
+        "Segoe UI",
+        sans-serif;
+
+      color: #222;
+
+      text-align: center;
+
+    }
+
+
+    .card {
+
+      max-width: 700px;
+
+      margin:
+        0 auto;
+
+      background: white;
+
+      padding: 20px;
+
+      border-radius: 18px;
+
+      box-shadow:
+        0 10px 30px
+        rgba(0,0,0,0.12);
+
+    }
+
+
+    h1 {
+
+      margin-top: 0;
+
+      font-size: 24px;
+
+    }
+
+
+    .description {
+
+      color: #666;
+
+      font-size: 14px;
+
+    }
+
+
+    #cameraBox {
+
+      position: relative;
+
+      width: 100%;
+
+      max-width: 640px;
+
+      aspect-ratio: 4 / 3;
+
+      margin: 20px auto;
+
+      background: #111;
+
+      overflow: hidden;
+
+      border-radius: 14px;
+
+    }
+
+
+    #video {
+
+      width: 100%;
+
+      height: 100%;
+
+      object-fit: cover;
+
+      transform:
+        scaleX(-1);
+
+    }
+
+
+    #canvas {
+
+      position: absolute;
+
+      inset: 0;
+
+      width: 100%;
+
+      height: 100%;
+
+      transform:
+        scaleX(-1);
+
+    }
+
+
+    .zones {
+
+      position: absolute;
+
+      inset: 0;
+
+      display: flex;
+
+      pointer-events: none;
+
+    }
+
+
+    .zone {
+
+      width: 50%;
+
+      display: flex;
+
+      align-items: flex-start;
+
+      justify-content: center;
+
+      padding-top: 12px;
+
+      font-size: 16px;
+
+      font-weight: bold;
+
+      color: rgba(255,255,255,.9);
+
+      text-shadow:
+        0 2px 5px rgba(0,0,0,.7);
+
+    }
+
+
+    #leftZone {
+
+      background:
+        linear-gradient(
+          to right,
+          rgba(0,100,255,.18),
+          transparent
+        );
+
+    }
+
+
+    #rightZone {
+
+      background:
+        linear-gradient(
+          to left,
+          rgba(255,100,0,.18),
+          transparent
+        );
+
+    }
+
+
+    button {
+
+      width: 100%;
+
+      padding: 15px;
+
+      border: none;
+
+      border-radius: 10px;
+
+      background: #16a34a;
+
+      color: white;
+
+      font-size: 17px;
+
+      font-weight: bold;
+
+      cursor: pointer;
+
+    }
+
+
+    button:disabled {
+
+      opacity: .5;
+
+      cursor: not-allowed;
+
+    }
+
+
+    #status {
+
+      margin: 15px 0;
+
+      padding: 12px;
+
+      border-radius: 10px;
+
+      background: #f1f5f9;
+
+      font-weight: bold;
+
+    }
+
+
+    .scores {
+
+      display: flex;
+
+      gap: 12px;
+
+      margin-top: 15px;
+
+    }
+
+
+    .score {
+
+      flex: 1;
+
+      padding: 18px;
+
+      border-radius: 14px;
+
+      background: #f8fafc;
+
+    }
+
+
+    .scoreTitle {
+
+      font-size: 14px;
+
+      color: #666;
+
+    }
+
+
+    .scoreNumber {
+
+      font-size: 42px;
+
+      font-weight: bold;
+
+      margin-top: 5px;
+
+    }
+
+
+    .log {
+
+      margin-top: 15px;
+
+      height: 110px;
+
+      overflow-y: auto;
+
+      text-align: left;
+
+      font-size: 12px;
+
+      padding: 10px;
+
+      background: #f8fafc;
+
+      border-radius: 10px;
+
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+
+<div class="card">
+
+
+  <h1>
+    🖐️ ระบบตรวจจับมือ
+  </h1>
+
+
+  <div class="description">
+
+    ยกนิ้วชี้ โดยงอนิ้วที่เหลือ
+    เพื่อเพิ่มคะแนน
+
+  </div>
+
+
+  <button
+    id="startButton"
+  >
+    🎥 เปิดกล้อง
+  </button>
+
+
+  <div id="status">
+    กดปุ่มเปิดกล้องเพื่อเริ่มต้น
+  </div>
+
+
+  <div id="cameraBox">
+
+    <video
+      id="video"
+      autoplay
+      playsinline
+      muted>
+    </video>
+
+
+    <canvas
+      id="canvas">
+    </canvas>
+
+
+    <div class="zones">
+
+      <div
+        class="zone"
+        id="leftZone">
+        TEAM LEFT
+      </div>
+
+      <div
+        class="zone"
+        id="rightZone">
+        TEAM RIGHT
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <div class="scores">
+
+    <div class="score">
+
+      <div class="scoreTitle">
+        TEAM LEFT
+      </div>
+
+      <div
+        class="scoreNumber"
+        id="leftScore">
+        0
+      </div>
+
+    </div>
+
+
+    <div class="score">
+
+      <div class="scoreTitle">
+        TEAM RIGHT
+      </div>
+
+      <div
+        class="scoreNumber"
+        id="rightScore">
+        0
+      </div>
+
+    </div>
+
+  </div>
+
+
+  <div
+    id="log"
+    class="log">
+  </div>
+
+
+</div>
+
+
+<!--
+  iframe นี้ใช้เป็นปลายทางของ POST
+  เพื่อไม่ต้องพึ่ง CORS
+-->
+<iframe
+  name="scoreSink"
+  style="display:none;">
+</iframe>
+
+
+<script>
+
+
+/*************************************************
+ * ตั้งค่าการเชื่อมต่อ
+ *************************************************/
+
+
+const API_URL =
+  'ใส่_URL_WEB_APP_ของ_APPS_SCRIPT';
+
+
+const ACCESS_KEY =
+  'MYGAME2026';
+
+
+/*************************************************
+ * ตั้งค่าระบบตรวจจับ
+ *************************************************/
+
+
+const COOLDOWN_MS =
+  2500;
+
+
+/*
+ * ต้องตรวจพบ gesture ติดต่อกันกี่เฟรม
+ * ก่อนถือว่าเป็น gesture จริง
+ */
+const REQUIRED_FRAMES =
+  8;
+
+
+/*
+ * ตรงนี้กำหนดว่า
+ *
+ * ครึ่งซ้ายของหน้าจอ = LEFT
+ * ครึ่งขวาของหน้าจอ = RIGHT
+ */
+const LEFT_TEAM =
+  'LEFT';
+
+const RIGHT_TEAM =
+  'RIGHT';
+
+
+/*************************************************
+ * DOM
+ *************************************************/
+
+
+const video =
+  document.getElementById('video');
+
+const canvas =
+  document.getElementById('canvas');
+
+const ctx =
+  canvas.getContext('2d');
+
+const statusElement =
+  document.getElementById('status');
+
+const startButton =
+  document.getElementById('startButton');
+
+const logElement =
+  document.getElementById('log');
+
+const leftScoreElement =
+  document.getElementById('leftScore');
+
+const rightScoreElement =
+  document.getElementById('rightScore');
+
+
+/*************************************************
+ * ตัวแปรระบบ
+ *************************************************/
+
+
+let cameraStream = null;
+
+let processing = false;
+
+let canScore = true;
+
+let gestureFrames = 0;
+
+let lastTeam = null;
+
+
+/*************************************************
+ * Log
+ *************************************************/
+
+
+function addLog(message) {
+
+  const time =
+    new Date()
+      .toLocaleTimeString();
+
+  logElement.innerHTML =
+    `[${time}] ${message}<br>` +
+    logElement.innerHTML;
+
+}
+
+
+/*************************************************
+ * Distance
+ *************************************************/
+
+
+function distance(a, b) {
+
+  const dx =
+    a.x - b.x;
+
+  const dy =
+    a.y - b.y;
+
+  return Math.sqrt(
+    dx * dx +
+    dy * dy
+  );
+
+}
+
+
+/*************************************************
+ * ตรวจนิ้ว
+ *
+ * วิธีนี้ใช้ระยะจากปลายนิ้ว
+ * เทียบกับข้อนิ้วและข้อมือ
+ *
+ * จึงไม่ผูกกับแกน Y อย่างเดียว
+ *************************************************/
+
+
+function isFingerExtended(
+  landmarks,
+  tip,
+  pip
+) {
+
+  const wrist =
+    landmarks[0];
+
+  const tipDistance =
+    distance(
+      landmarks[tip],
+      wrist
+    );
+
+  const pipDistance =
+    distance(
+      landmarks[pip],
+      wrist
+    );
+
+  return tipDistance >
+    pipDistance * 1.10;
+
+}
+
+
+function isFingerCurled(
+  landmarks,
+  tip,
+  pip
+) {
+
+  const wrist =
+    landmarks[0];
+
+  const tipDistance =
+    distance(
+      landmarks[tip],
+      wrist
+    );
+
+  const pipDistance =
+    distance(
+      landmarks[pip],
+      wrist
+    );
+
+  return tipDistance <
+    pipDistance * 0.95;
+
+}
+
+
+/*************************************************
+ * ตรวจท่าชี้นิ้ว
+ *************************************************/
+
+
+function isPointingGesture(
+  landmarks
+) {
+
+  const indexExtended =
+    isFingerExtended(
+      landmarks,
+      8,
+      6
+    );
+
+
+  const middleCurled =
+    isFingerCurled(
+      landmarks,
+      12,
+      10
+    );
+
+
+  const ringCurled =
+    isFingerCurled(
+      landmarks,
+      16,
+      14
+    );
+
+
+  const pinkyCurled =
+    isFingerCurled(
+      landmarks,
+      20,
+      18
+    );
+
+
+  return (
+    indexExtended &&
+    middleCurled &&
+    ringCurled &&
+    pinkyCurled
+  );
+
+}
+
+
+/*************************************************
+ * หาทีมจากตำแหน่งมือ
+ *************************************************/
+
+
+function getTeamFromPosition(
+  landmarks
+) {
+
+  /*
+   * จุด 9 คือบริเวณกลางฝ่ามือ
+   */
+  const palm =
+    landmarks[9];
+
+
+  /*
+   * เพราะ video แสดงแบบ mirror
+   * จึงกลับค่า X
+   */
+  const screenX =
+    1 - palm.x;
+
+
+  if (screenX < 0.5) {
+
+    return LEFT_TEAM;
+
+  } else {
+
+    return RIGHT_TEAM;
+
+  }
+
+}
+
+
+/*************************************************
+ * ส่งคะแนน
+ *
+ * ใช้ form POST ไป iframe
+ * ไม่ต้องอ่าน response
+ *************************************************/
+
+
+function sendScore(team) {
+
+  if (!canScore) {
+    return;
+  }
+
+
+  canScore = false;
+
+
+  statusElement.textContent =
+    `🎯 พบ gesture → ${team}`;
+
+
+  addLog(
+    `ส่งคะแนนให้ ${team}`
+  );
+
+
+  const form =
+    document.createElement(
+      'form'
+    );
+
+
+  form.method =
+    'POST';
+
+
+  form.action =
+    API_URL;
+
+
+  form.target =
+    'scoreSink';
+
+
+  /*
+   * team
+   */
+  const teamInput =
+    document.createElement(
+      'input'
+    );
+
+  teamInput.type =
+    'hidden';
+
+  teamInput.name =
+    'team';
+
+  teamInput.value =
+    team;
+
+
+  /*
+   * key
+   */
+  const keyInput =
+    document.createElement(
+      'input'
+    );
+
+  keyInput.type =
+    'hidden';
+
+  keyInput.name =
+    'key';
+
+  keyInput.value =
+    ACCESS_KEY;
+
+
+  form.appendChild(
+    teamInput
+  );
+
+  form.appendChild(
+    keyInput
+  );
+
+
+  document.body.appendChild(
+    form
+  );
+
+
+  form.submit();
+
+
+  form.remove();
+
+
+  /*
+   * โหลดคะแนนใหม่
+   */
+  setTimeout(
+    loadScores,
+    500
+  );
+
+
+  /*
+   * cooldown
+   */
+  setTimeout(
+    () => {
+
+      canScore = true;
+
+      gestureFrames = 0;
+
+      lastTeam = null;
+
+      statusElement.textContent =
+        '🟢 พร้อมตรวจจับมือ';
+
+    },
+    COOLDOWN_MS
+  );
+
+}
+
+
+/*************************************************
+ * อ่านคะแนน
+ *
+ * ใช้ JSONP
+ *************************************************/
+
+
+let jsonpCounter = 0;
+
+
+function loadScores() {
+
+  if (!API_URL) {
+    return;
+  }
+
+
+  const callbackName =
+    'scoreCallback_' +
+    (++jsonpCounter);
+
+
+  window[callbackName] =
+    function(data) {
+
+      try {
+
+        if (
+          data.status ===
+          'success'
+        ) {
+
+          leftScoreElement.textContent =
+            data.left;
+
+          rightScoreElement.textContent =
+            data.right;
+
+        }
+
+      } finally {
+
+        delete window[
+          callbackName
+        ];
+
+      }
+
+    };
+
+
+  const script =
+    document.createElement(
+      'script'
+    );
+
+
+  script.src =
+    API_URL +
+    '?action=scores' +
+    '&callback=' +
+    callbackName +
+    '&t=' +
+    Date.now();
+
+
+  script.onerror =
+    function() {
+
+      addLog(
+        '❌ อ่านคะแนนไม่สำเร็จ'
+      );
+
+      delete window[
+        callbackName
+      ];
+
+    };
+
+
+  document.body.appendChild(
+    script
+  );
+
+
+  /*
+   * ลบ script หลังโหลด
+   */
+  setTimeout(
+    () => {
+
+      script.remove();
+
+    },
+    5000
+  );
+
+}
+
+
+/*************************************************
+ * MediaPipe
+ *************************************************/
+
+
+const hands =
+  new Hands({
+
+    locateFile:
+      (file) => {
+
+        return (
+          'https://cdn.jsdelivr.net/npm/@mediapipe/hands/' +
+          file
+        );
+
+      }
+
+  });
+
+
+hands.setOptions({
+
+  maxNumHands: 1,
+
+  modelComplexity: 1,
+
+  minDetectionConfidence:
+    0.6,
+
+  minTrackingConfidence:
+    0.6
+
+});
+
+
+/*************************************************
+ * เมื่อ MediaPipe ตรวจพบผล
+ *************************************************/
+
+
+function onResults(
+  results
+) {
+
+  ctx.clearRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+  );
+
+
+  if (
+    !results.multiHandLandmarks ||
+    results.multiHandLandmarks.length === 0
+  ) {
+
+    gestureFrames = 0;
+
+    lastTeam = null;
+
+    if (canScore) {
+
+      statusElement.textContent =
+        '🟢 พร้อมตรวจจับมือ';
+
+    }
+
+    return;
+
+  }
+
+
+  for (
+    let i = 0;
+    i < results.multiHandLandmarks.length;
+    i++
+  ) {
+
+    const landmarks =
+      results.multiHandLandmarks[i];
+
+
+    /*
+     * วาดเส้นมือ
+     */
+    drawConnectors(
+      ctx,
+      landmarks,
+      HAND_CONNECTIONS,
+      {
+        color: '#00FF88',
+        lineWidth: 4
+      }
+    );
+
+
+    drawLandmarks(
+      ctx,
+      landmarks,
+      {
+        color: '#FF4444',
+        lineWidth: 2
+      }
+    );
+
+
+    const gesture =
+      isPointingGesture(
+        landmarks
+      );
+
+
+    if (!gesture) {
+
+      gestureFrames = 0;
+
+      lastTeam = null;
+
+      if (canScore) {
+
+        statusElement.textContent =
+          '👋 พบมือ แต่ยังไม่ใช่ gesture';
+
+      }
+
+      continue;
+
+    }
+
+
+    /*
+     * หาทีมจากตำแหน่งมือ
+     */
+    const team =
+      getTeamFromPosition(
+        landmarks
+      );
+
+
+    /*
+     * ต้องเป็นทีมเดิมต่อเนื่อง
+     */
+    if (
+      team === lastTeam
+    ) {
+
+      gestureFrames++;
+
+    } else {
+
+      gestureFrames = 1;
+
+      lastTeam = team;
+
+    }
+
+
+    statusElement.textContent =
+      `✋ ตรวจพบ gesture ${team} ` +
+      `(${gestureFrames}/${REQUIRED_FRAMES})`;
+
+
+    /*
+     * ต้องค้าง gesture ให้ครบ
+     */
+    if (
+      gestureFrames >=
+      REQUIRED_FRAMES
+    ) {
+
+      sendScore(team);
+
+    }
+
+  }
+
+}
+
+
+/*************************************************
+ * ส่งภาพให้ MediaPipe
+ *************************************************/
+
+
+async function processFrame() {
+
+  if (
+    !cameraStream
+  ) {
+    return;
+  }
+
+
+  if (
+    video.readyState < 2
+  ) {
+
+    requestAnimationFrame(
+      processFrame
+    );
+
+    return;
+
+  }
+
+
+  if (!processing) {
+
+    processing = true;
+
+
+    try {
+
+      await hands.send({
+        image: video
+      });
+
+    } catch (error) {
+
+      console.error(error);
+
+    }
+
+
+    processing = false;
+
+  }
+
+
+  requestAnimationFrame(
+    processFrame
+  );
+
+}
+
+
+/*************************************************
+ * เปิดกล้อง
+ *************************************************/
+
+
+async function startCamera() {
+
+  try {
+
+    statusElement.textContent =
+      'กำลังขอสิทธิ์กล้อง...';
+
+
+    startButton.disabled =
+      true;
+
+
+    cameraStream =
+      await navigator
+        .mediaDevices
+        .getUserMedia({
+
+          video: {
+
+            facingMode: 'user',
+
+            width: {
+              ideal: 640
+            },
+
+            height: {
+              ideal: 480
+            }
+
+          },
+
+          audio: false
+
+        });
+
+
+    video.srcObject =
+      cameraStream;
+
+
+    await video.play();
+
+
+    canvas.width =
+      video.videoWidth || 640;
+
+    canvas.height =
+      video.videoHeight || 480;
+
+
+    statusElement.textContent =
+      '🟢 กล้องพร้อม — ยกนิ้วชี้เพื่อทดสอบ';
+
+
+    addLog(
+      'เปิดกล้องสำเร็จ'
+    );
+
+
+    requestAnimationFrame(
+      processFrame
+    );
+
+
+    /*
+     * โหลดคะแนนครั้งแรก
+     */
+    loadScores();
+
+
+  } catch (error) {
+
+    console.error(error);
+
+    statusElement.textContent =
+      '❌ เปิดกล้องไม่สำเร็จ';
+
+
+    addLog(
+      'Camera error: ' +
+      error.name +
+      ' - ' +
+      error.message
+    );
+
+
+    startButton.disabled =
+      false;
+
+  }
+
+}
+
+
+/*************************************************
+ * ปุ่มเปิดกล้อง
+ *************************************************/
+
+
+startButton.addEventListener(
+  'click',
+  startCamera
+);
+
+
+/*************************************************
+ * โหลดคะแนนทุก 2 วินาที
+ *************************************************/
+
+
+setInterval(
+  loadScores,
+  2000
+);
+
+
+</script>
+
+</body>
+
+</html>
